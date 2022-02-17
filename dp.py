@@ -20,10 +20,11 @@ def read_data(file_name):
     df['execution']=df['t_time']-df['issued_time']
     drop=['issued_time','fetch_time','t_time']
     df=df.drop(drop,axis=1)
+    df=df.dropna()
     return df 
 
 if __name__ == '__main__':
-    df= read_data('data_processing/rodina2_data.log')
+    df= read_data('data_processing/parboil_data.log')
     import ipdb; ipdb.set_trace()
     
     
