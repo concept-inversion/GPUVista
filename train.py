@@ -4,7 +4,7 @@ import torch.optim as optim
 import os,sys
 from common import *
 from model import *
-from dp import *
+from data_processing.dp import *
 from sklearn.model_selection import train_test_split
 
 def train(model, device, train_loader, optimizer, epoch):
