@@ -1,4 +1,4 @@
-import common
+import data_processing.common as common
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

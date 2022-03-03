@@ -6,15 +6,12 @@ import torch
 from sklearn import preprocessing
 import sys,os
 import ipdb
-# from common import *
+from common import *
 BUFFER_LENGTH= 2
 
+
 def process_data_first_time(file_name):
-    col_name= ['flag','kid', 'uid', 'core', 'warp', 'exe_time', 'inst', 'ibuff_time', 'issued_time', 'latency', 'src_regs', 'dst_regs', 'isload', 'isstore', 'memwidth', 'op', 'sp_op', 'op_pipe', 'mem_op', 'oprd_type', 'initiation_interval',
-     'active_inst','isatomic','cache_status','reconvergence','pc','bar_type','red_type','bar_count','cache_op']
-    # drop=['flag','uid','core','warp','inst']
-    # output=['fetch','issue','execution']
-    data = pd.read_csv(file_name, names=col_name,error_bad_lines=False, header=None, )
+    data = pd.read_csv(file_name, names=col_name_file,error_bad_lines=False, header=None, )
     num_lines = sum(1 for line in open(file_name))
     print(num_lines,data.shape[0])
     if num_lines!=data.shape[0]:
@@ -23,11 +20,14 @@ def process_data_first_time(file_name):
     kernels= [df.get_group(x) for x in df.groups]
     p_kernels=[]
     for frames in kernels:
-        le = preprocessing.LabelEncoder()
-        le.fit(frames['inst'])
-        obj1= le.transform(frames['inst'])
-        frames['instr']= obj1.copy()
-        # ipdb.set_trace()
+        # le = preprocessing.LabelEncoder()
+        # le.fit(frames['inst'])
+        # obj1= le.transform(frames['inst'])
+        # frames['instr']= obj1.copy()
+        try:
+            frames['instr']= frames['inst'].map(instr_map).astype(int)
+        except:
+            print("Error in mapping instruction")
         frames['wb_id']=frames.index.values.copy()
         ibuff_order= frames['uid']%BUFFER_LENGTH
         frames['buffer_order']= ibuff_order
@@ -46,14 +46,8 @@ def process_data_first_time(file_name):
     # ipdb.set_trace()
     return data_
 
-def read_data(path):
-    col_name=['kid', 'uid', 'exe_time', 'ibuff_time', 'issued_time', 'latency',
-       'src_regs', 'dst_regs', 'isload', 'isstore', 'memwidth', 'op',
-       'sp_op', 'op_pipe', 'mem_op', 'oprd_type', 'initiation_interval',
-       'active_inst', 'isatomic', 'cache_status', 'reconvergence',
-       'bar_type', 'red_type', 'bar_count', 'cache_op', 'instr', 'wb_id',
-       'buffer_order', 'fetch_lat', 'issue_lat', 'execution_lat'] 
-    data=pd.read_csv(path,header=None,names=col_name)
+def read_data(path): 
+    data=pd.read_csv(path,header=None,names=col_name_processed)
     return data
 
 
