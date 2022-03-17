@@ -59,7 +59,7 @@ class context():
         return self.clock
 
     def dump_inst(self, inst, dump_file):
-        # import ipdb; ipdb.set_trace()
+        #import ipdb; ipdb.set_trace()
         out= inst[FEATURE_LENGTH:FEATURE_LENGTH+OUT_LATENCY].values.copy()
         inst[FEATURE_LENGTH:FEATURE_LENGTH+OUT_LATENCY]=0
         inst=inst.drop(drop_before_train)
@@ -69,7 +69,7 @@ class context():
         # print(shape, end=',')
         cat=np.pad(cat, (0, (CONTEXT_LENGTH-shape)*(len(train_cols_final))), 'constant', constant_values=0)
         # print(cat.shape, end=',')
-        cat=np.append(cat, out).astype(np.int8)
+        cat=np.append(cat, out).astype(np.int16)
         # print(cat.shape)
         dump_file.write(cat)
 

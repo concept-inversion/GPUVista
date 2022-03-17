@@ -10,6 +10,7 @@ if __name__ == '__main__':
     if(os.path.isdir(path)):
         directory= os.listdir(path)
         for file in directory:
+            print(file)
             os.system('./preprocess.sh '+path+'/'+file)
     else:
         os.system('./preprocess.sh '+path)

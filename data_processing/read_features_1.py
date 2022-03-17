@@ -13,7 +13,7 @@ BUFFER_LENGTH= 2
 def process_data_first_time(file_name):
     data = pd.read_csv(file_name, names=col_name_file,error_bad_lines=False, header=None, )
     num_lines = sum(1 for line in open(file_name))
-    print(num_lines,data.shape[0])
+    print(file_name,num_lines,data.shape[0])
     if num_lines!=data.shape[0]:
         print(num_lines-data.shape[0], ' Error lines read by pandas!!')
     df= data.groupby(by=['kid'])
@@ -28,14 +28,29 @@ def process_data_first_time(file_name):
             frames['instr']= frames['inst'].map(instr_map).astype(int)
         except:
             print("Error in mapping instruction")
+            all=[instr_map.get(instr,instr) for instr in frames['inst'].values]
+            no_integers = [x for x in all if not isinstance(x, int)]
+            #print("Missing instruction map:", set(no_integers))
+            missing= list(set(no_integers))
+            print("Missing instr map: ", missing)
+            Keymax = max(instr_map, key= lambda x: instr_map[x])
+            max_value= instr_map.get(Keymax)
+            print("max: ", max_value) 
+            '''
+            for each in missing:
+                print("in the loop", each, Keymax+1)
+                print(each,Keymax+1)
+                Keymax+=1
+                '''
+            import ipdb; ipdb.set_trace()
         frames['wb_id']=frames.index.values.copy()
         ibuff_order= frames['uid']%BUFFER_LENGTH
         frames['buffer_order']= ibuff_order
         # frames=frames.set_index('uid').sort_index()
         frames=frames.sort_values(by=['uid'])
-        frames['fetch_lat']=frames['ibuff_time'].diff()
-        frames['fetch_lat'].fillna(0,inplace=True)
-        frames['issue_lat']=frames['issued_time']-frames['ibuff_time']
+        frames['issue_lat']=frames['issued_time'].diff()
+        frames['issue_lat'].fillna(0,inplace=True)
+        frames['fetch_lat']=frames['issued_time']-frames['ibuff_time']
         frames['execution_lat']=frames['exe_time']-frames['issued_time']
         # frames.reset_index(inplace=True)
         frames.fetch_lat=frames.fetch_lat.astype(int)

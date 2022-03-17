@@ -4,6 +4,7 @@ from read_features_1 import read_data
 import numpy as np
 from common import *
 from context import context
+import argparse
 '''
 Input: trace from each kernel
 Output: Context instruction for each instruction
@@ -53,21 +54,20 @@ def context_counter(event_lists):
     return count
 
 
-def benchmark_caller(df, dump_file):
+def benchmark_caller(df, file_name, dump_file):
     df= data.groupby(by=['kid'])
     kernels= [df.get_group(x) for x in df.groups]
+    print(file_name,len(kernels))
     bench_max=[]
     i=0
     for frame in kernels:
         event_lists= event_creator(frame)
         sorted_list= (sorted(event_lists, key = lambda i: i['clock']))
         # count=context_counter(sorted_list)
-        context_collector(frame, sorted_list, CONTEXT_LENGTH, dump_file)
-        break
-        bench_max.append(max(count))
-        print("kernel id: %d, Max count: %d" % (i,(max(count))))
+        clock=context_collector(frame, sorted_list, CONTEXT_LENGTH, dump_file)
+        #bench_max.append(max(count))
+        print("kernel id: %d, Cycle: %d" % (i,clock))
         i+=1
-        break
     return bench_max
 
 
@@ -84,12 +84,13 @@ def context_collector(df, event_lists, context_length, dump_file):
         gpu_context.get_clock()
         gpu_context.set_retire_list(inst)
         gpu_context.dump_inst(inst, dump_file)
-
+    return gpu_context.clock
     print("Simulation over in cycles: ", gpu_context.clock)
 
 
 if __name__ == '__main__':
-    " Input processed data from read_features_1.py"
+    " Input: processed data from read_features_1.py"
+    parser = argparse.ArgumentParser(description='Input: processed/<directory> Output: <Training_data>')
     max_count=[]
     path= sys.argv[1]
     if(os.path.isdir(path)):
@@ -99,10 +100,10 @@ if __name__ == '__main__':
         except:
             print("Error: dump file not found")
         for file in os.listdir(path):
-            print("bechmark: ", file)
+            #print("bechmark: ", file)
             if file.endswith(".log"):
                 data= read_data(path+'/'+file)
-                max_count.append(benchmark_caller(data, dump_file))
+                max_count.append(benchmark_caller(data, file, dump_file))
     else:
         file_name= path.split('/')[-2] + ".bin"
         try:
@@ -111,6 +112,6 @@ if __name__ == '__main__':
             print("Error: dump file not found")
         # import ipdb; ipdb.set_trace()
         data= read_data(path)
-        max_count.append(benchmark_caller(data, dump_file))
+        max_count.append(benchmark_caller(data, file, dump_file))
     dump_file.close()
     # import ipdb; ipdb.set_trace()
