@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import os,sys
 from data_processing.common import *
-from model import *
+from single_warp_v1.model import *
 from data_processing.read_features_1 import *
 from data_processing.common import *
 from sklearn.model_selection import train_test_split
@@ -17,14 +17,11 @@ def train(model, device, train_loader, optimizer, epoch):
 
 
 
-
 if __name__ == '__main__':
     # Read data
     dataset= sys.argv[1]
     df= read_data(dataset)
-    # import ipdb; ipdb.set_trace()
     print(df.isnull().values.any())
-    # df.fillna(0, inplace=True)
     output= df[['issue_lat','execution_lat','fetch_lat']]
     inp= df.drop(['issue_lat','execution_lat','fetch_lat','wb_id'],axis=1)
 
@@ -69,6 +66,6 @@ if __name__ == '__main__':
         out_= model(X_test)
         v= loss(out_, y_test)
         # wandb.log({"Test loss": v.item()})
-        print('Epoch:', i, ' Train Loss:', t_loss, ' Test Loss:',v.item() )
+        print('Epoch:', i, ' Train Loss:', t_loss, ' Test Loss:',v.item())
 
         

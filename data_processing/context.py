@@ -6,8 +6,6 @@ from common import *
 class context():
     def __init__(self, context_size):
         self.context_size = context_size
-        self.head=0
-        self.tail=0
         self.clock=0
         self.length=0
         self.context= pd.DataFrame(columns=train_cols)
@@ -23,7 +21,6 @@ class context():
         self.context.sort_values(by=['uid'],ascending=False, inplace=True)
         self.clock= self.clock + inst['fetch_lat']
         self.length+=1
-
         # print("Added instruction: ",inst['uid'], self.length, self.clock)
 
     def is_full(self):
@@ -75,3 +72,4 @@ class context():
         cat=np.append(cat, out).astype(np.int8)
         # print(cat.shape)
         dump_file.write(cat)
+
