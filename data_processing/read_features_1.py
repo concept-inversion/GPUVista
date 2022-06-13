@@ -48,13 +48,16 @@ def process_data_first_time(file_name):
         frames['buffer_order']= ibuff_order
         # frames=frames.set_index('uid').sort_index()
         frames=frames.sort_values(by=['uid'])
+        #import ipdb; ipdb.set_trace()
         frames['issue_lat']=frames['issued_time'].diff()
         frames['issue_lat'].fillna(0,inplace=True)
+        frames['issue_lat']=frames['issue_lat'].astype(np.int32)
         frames['fetch_lat']=frames['issued_time']-frames['ibuff_time']
         frames['execution_lat']=frames['exe_time']-frames['issued_time']
         # frames.reset_index(inplace=True)
         frames.fetch_lat=frames.fetch_lat.astype(int)
-        frames=frames.drop(['inst','flag','core','warp','pc'],axis=1)
+        #import ipdb;ipdb.set_trace()
+        frames=frames.drop(['inst','flag','pc'],axis=1)
         p_kernels.append(frames)
         # ipdb.set_trace()
     data_= pd.concat(p_kernels)
@@ -91,7 +94,6 @@ if __name__ == '__main__':
             # break
     else:
         df= process_data_first_time(path)
-        df.to_csv('processed/'+path.split('/')[-2]+'/'+path.split('/')[-1],index=False,header=False)
-
-    
-    
+        #import ipdb; ipdb.set_trace()
+        df.to_csv('processed_'+path,index=False,header=False)
+        df.to_csv('processed/'+path.split('/')[-2]+'/'+path.split('/')[-1],index=False,header=False) 
