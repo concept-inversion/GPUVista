@@ -1,0 +1,161 @@
+from enum import unique
+import sys,os
+from read_features_1 import read_data
+import numpy as np
+from common import *
+from context import context
+import argparse
+'''
+Input: trace from each kernel
+Output: Context instruction for each instruction
+'''     
+
+class data():
+    data=None
+    r_clock=0
+    def __init__(self, data=None):
+        self.data=data.copy()
+    def set_retire(self,clock):
+        self.r_clock = clock
+
+
+
+
+class context_list():
+    context_list=[]
+    head=0
+    tail=0
+    clock= 0
+    count=0 
+    size=10
+    def __init__(self, type=None):
+        if type== BLOCK:
+            N=None
+        elif type== S_MEM:
+            N=None
+        else:
+            N=None
+
+    def add(self,data):
+        context_list.append(data)
+        count+=1
+        tail+=1
+        return None
+
+    def retire(self,clock):
+        for inst in self.context_list:
+            if clock>inst.clock:
+                context_list.remove(inst)   
+        return None
+
+
+
+    
+
+
+
+
+
+def event_creator(df):
+    event_lists=[]
+    for i in range((df.shape[0])):
+        kid= df.iloc[i]['kid']
+        uid= df.iloc[i]['uid']
+        fetch=df.iloc[i]['ibuff_time']
+        issue=df.iloc[i]['issued_time']
+        execute=df.iloc[i]['exe_time']
+        op=df.iloc[i]['instr']
+        event_lists.append({'kid':kid, 'uid':uid, 'clock':fetch, 'type':0, 'op':op })
+        event_lists.append({'kid':kid, 'uid':uid, 'clock':issue, 'type':1, 'op':op})
+        event_lists.append({'kid':kid, 'uid':uid, 'clock':execute, 'type':2, 'op':op})
+        # import ipdb; ipdb.set_trace()
+    return event_lists
+  
+
+def context_counter(event_lists):
+    fetched= set()
+    issued= set()
+    ops= []
+    count= []
+    event_count=0
+    for i in range(len(event_lists)):
+        # ipdb.set_trace()
+        data= event_lists[i]
+        if data['type']==0:
+            fetched.add(data['uid'])
+        elif data['type']==1:
+            fetched.remove(data['uid'])
+            issued.add(data['uid'])
+            ops.append(data['op'])
+        elif data['type']==2:
+            issued.remove(data['uid'])
+            ops.remove(data['op'])
+        count.append(len(fetched) + len(issued))
+        # print("%s,%d,%d,%d,%d"%(data['op'],event_count,len(set(ops)), len(fetched), len(issued)))
+        print("%s,%d,%d,%d,%d"%(ops,event_count,len(set(ops)), len(fetched), len(issued)))
+        # print("%s,%d,%d,%d,%d"%(list(instr_map.keys())[list(instr_map.values()).index(data['op'])],event_count,len(set(ops)), len(fetched), len(issued)))
+        event_count+=1
+    return count
+
+
+def benchmark_caller(df, file_name, dump_file):
+    df= data.groupby(by=['kid'])
+    kernels= [df.get_group(x) for x in df.groups]
+    print(file_name,len(kernels))
+    bench_max=[]
+    i=0
+    for frame in kernels:
+        event_lists= event_creator(frame)
+        sorted_list= (sorted(event_lists, key = lambda i: i['clock']))
+        # count=context_counter(sorted_list)
+        clock=context_collector(frame, sorted_list, CONTEXT_LENGTH, dump_file)
+        #bench_max.append(max(count))
+        print("kernel id: %d, Cycle: %d" % (i,clock))
+        i+=1
+    return bench_max
+
+
+def context_collector(df, event_lists, context_length, dump_file):
+    instructions= df.shape[0]
+    dump_instructions=[]
+    clock=0
+    gpu_context= context(context_length)
+    for i in range(instructions):
+        inst= df.iloc[i]
+        inst=inst.drop(['exe_time', 'ibuff_time', 'issued_time'])
+        gpu_context.retire()
+        gpu_context.add(inst)
+        gpu_context.get_clock()
+        gpu_context.set_retire_list(inst)
+        gpu_context.dump_inst(inst, dump_file)
+    return gpu_context.clock
+    print("Simulation over in cycles: ", gpu_context.clock)
+
+
+if __name__ == '__main__':
+    " Input: processed data from read_features_1.py"
+    parser = argparse.ArgumentParser(description='Input: processed/<directory> Output: <Training_data>')
+    max_count=[]
+    path= sys.argv[1]
+    if(os.path.isdir(path)):
+        file_name= path.split('/')[-2] + ".bin"
+        try:
+            dump_file= open("training_data/"+file_name, "wb")
+        except:
+            print("Error: dump file not found")
+        for file in os.listdir(path):
+            #print("bechmark: ", file)
+            if file.endswith(".log"):
+                data= read_data(path+'/'+file)
+                max_count.append(benchmark_caller(data, file, dump_file))
+    else:
+        file_name= path.split('/')[-2] + ".bin"
+        try:
+            dump_file= open("training_data/"+file_name, "wb")
+        except:
+            print("Error: dump file not found")
+        # import ipdb; ipdb.set_trace()
+        data= read_data(path)
+        max_count.append(benchmark_caller(data, file, dump_file))
+    dump_file.close()
+    # import ipdb; ipdb.set_trace()
