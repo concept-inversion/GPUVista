@@ -2,7 +2,7 @@ from traceback import FrameSummary
 import pandas as pd
 import numpy as np
 from sqlalchemy import null
-import torch
+#import torch
 from sklearn import preprocessing
 import sys,os
 import ipdb
@@ -23,34 +23,35 @@ def collector(op_list, op_set):
 
 
 if __name__ == '__main__':
+    #import ipdb; ipdb.set_trace()
     path= sys.argv[1]
-    unique_list= dict.fromkeys(col_name_file)
+
+    unique_list= dict.fromkeys(col_name)
     if(os.path.isdir(path)):
         directory= os.listdir(path)
-        for file in directory:
-            df= pd.read_csv(file, names=col_name_file,error_bad_lines=False, header=None, )
-            
-
-
-
-
-
-
-if __name__ == '__main__':
-    # Process all the file in the given directory
-    path= sys.argv[1]
-    op_set= set()
-    if(os.path.isdir(path)):
-        directory= os.listdir(path)
-        # import ipdb;ipdb.set_trace()
-        for file in directory:
-            df= null
-            df= pd.read_csv(file, names=col_name_file,error_bad_lines=False, header=None, )
-            split=sys.argv[1].split('/')
-            if os.path.isdir('processed/'+split[1])==False:
-                os.mkdir('processed/'+split[1])
-            df.to_csv('processed/'+ split[1]+'/'+file,index=False,header=False)
-            # break
+        i=0
+        for f in directory:
+            i=i+1
+            df= pd.read_csv(path+'/'+f, names=col_name,error_bad_lines=False, header=None, )
+            import ipdb; ipdb.set_trace()
+            for col in unique_elements:
+                un=(df[col].unique())
+                if i==1:
+                    unique_list[col]= un
+                else:
+                    #import ipdb; ipdb.set_trace()
+                    temp= set(np.append(unique_list[col],un))
+                    unique_list[col]= np.array(list(temp))
+        import ipdb; ipdb.set_trace()
     else:
-        df= process_data_first_time(path)
-        df.to_csv('processed/'+path.split('/')[-2]+'/'+path.split('/')[-1],index=False,header=False)
+        df= pd.read_csv(path+'/'+f, names=col_name,error_bad_lines=False, header=None, )
+        for col in unique_elements:
+        	un=(df[col].unique())
+                if i==1:
+                    unique_list[col]= un
+                else:
+                    temp= set(np.append(unique_list[col],un))
+                    unique_list[col]= np.array(list(temp))
+	import ipdb; ipdb.set_trace()
+
+
