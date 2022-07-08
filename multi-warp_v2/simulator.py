@@ -14,14 +14,17 @@ class instruction():
     clock=0
     inst= None
     truth= None
-    identifier=None
+    identifiers=None
+    uid=None
     def __init__(self, inst=None):
         #self.inst=inst
-        ipdb.set_trace()
+        #ipdb.set_trace()
         self.truth= inst[['exe_lat', 'issue_lat']]
+        self.uid=inst['uid']
         self.identifier= inst[['kid', 'core', 'sch_id', 'warp_id', 'uid', 'pc', 'reconvergence']]
         self.inst= inst.drop(['exe_lat', 'issue_lat','kid', 'core', 'sch_id', 'warp_id', 'uid', 'pc', 'reconvergence'])
-
+        self.inst['exe_lat']=0
+        self.inst['issue_lat']=0
 
 class model_collection():
     block_model= None
@@ -51,7 +54,7 @@ class model_collection():
         else:
             print("No trained models.")
 
-class context_list():
+class mem_simulator():
     context_list = []
     head = 0
     tail = 0
@@ -59,21 +62,21 @@ class context_list():
     count = 0
     size = None
     model= None
-    inst= None
-    def __init__(self, type=None):
-        if type == BLOCK:
-            self.model=model_collection.block_model
-        elif type == S_MEM:
+    curr_inst= None
+    sm_id=0
+    def __init__(self, model_collection, sm_id,mode=None):
+        if mode == SMEM:
             self.model=model_collection.smem_model
+            self.sm_id=sm_id
         else:
             self.model=model_collection.gmem_model
 
     def add(self, data):
         ipdb.set_trace()
-        self.inst= data
-        context_list.append(data)
-        count += 1
-        tail += 1
+        self.curr_inst= data
+        self.context_list.append(data)
+        self.count += 1
+        self.tail += 1
         return None
 
     def retire(self):
@@ -86,20 +89,89 @@ class context_list():
         self.retire() 
         self.add(inst)
 
-    def generate_input():
+    def update_lat(self, exe_lat):
+        retire= self.clock + exe_lat
+        for inst in self.context_list:
+            if inst.uid == curr_inst.uid:
+                inst['exe_lat']= exe_lat
+
+    def generate_input(self):
         input_data=[]
-        for inst in range(context_list):
+        for inst in range(self.context_list):
+            input_data.append(inst.inst)
+        return input_data 
+
+    def simulate(self):
+        input_data= self.generate_input()
+        if TRUTH:
+            exe_lat= self.curr_inst.truth['exe_lat']            
+            if DUMP:
+                print("dump")
+                # open files
+                # write input
+                # write output
+
+        else:
+            print("predict the latency")
+        self.update_lat(exe_lat)
+
+
+class block_simulator():
+    context_list = []
+    head = 0
+    tail = 0
+    clock = 0
+    count = 0
+    size = None
+    model= None
+    curr_inst= None
+    sm_id=0
+    block_id=0
+    def __init__(self, model_collection, sm_id, block_id,mode=None):
+        self.model=model_collection.block_model
+        self.sm_id=sm_id
+        self.block_id=block_id
+    
+    def add(self, data):
+        ipdb.set_trace()
+        self.curr_inst= data
+        self.context_list.append(data)
+        self.count += 1
+        self.tail += 1
+        return None
+
+    def retire(self):
+        for inst in self.context_list:
+            if inst.clock > self.clock:
+                self.context_list.remove(inst)
+        return None
+
+    def cycle(self, inst):
+        self.retire() 
+        self.add(inst)
+
+    def update_lat(self, issue_lat, exe_lat):
+        retire= self.clock + issue_lat + exe_lat
+        for inst in self.context_list:
+            if inst.uid == curr_inst.uid:
+                inst.truth['issue_lat']= issue_lat 
+                inst.truth['exe_lat']= exe_lat
+
+    def generate_input(self):
+        input_data=[]
+        for inst in range(self.context_list):
             input_data.append(inst.inst)
         return input_data 
 
     def simulate():
         input_data= self.generate_input()
         if TRUTH:
-                    
+            issue_lat=inst.inst['issue_lat'] 
+            exe_lat= inst.inst['exe_lat']
         else:
-            print("predict the latency")
+            print("predict the latency") 
 
-class simulator_config():
+class simulator_configurator():
     sm_count= 0
     block_count= 0
     block_models= None
@@ -116,16 +188,16 @@ class simulator_config():
         self.block_count= block_unique * self.sm_count
 
     def context_init(self):
-        self.block_models = [[models.block_model for j in range(self.block_count)] for i in range(self.sm_count)]
-        self.smem_models= [models.smem_model for i in range(self.sm_count)]
-        self.gmem_models= models.gmem_model
+        self.blocks= [[block_simulator(self.models,i,j) for j in range(self.block_count)] for i in range(self.sm_count)]
+        self.smems= [ mem_simulator(self.models,i,SMEM) for i in range(self.sm_count)]
+        self.gmem= mem_simulator(self.models,0)
         #self.blocks[i][j].append(context_list(S_MEM))
         
 
 def context_collector(df, super_model): 
-    simulator_instance= simulator_config(super_model)
-    simulator_instance.counter(df)
-    simulator_instance.context_init()
+    simulator_config= simulator_configurator(super_model)
+    simulator_config.counter(df)
+    simulator_config.context_init()
     instructions = df.shape[0]
     #ipdb.set_trace()
     df.sort_values(by=['issue_cycle'],inplace=True)
@@ -150,17 +222,17 @@ def context_collector(df, super_model):
     for i in range(instructions):
         inst = df.iloc[i].copy()
         data=instruction(inst)
-        gpu_context=simulator_instance.block[inst['s_mem']][inst['sch_id']]
-        issue_lat=gpu_context.cycle(data)
+        issue_lat=0
+        exe_lat=0
+        gpu_context=simulator_config.blocks[inst['core']][inst['sch_id']]
+        issue_lat,exe_lat=gpu_context.cycle(data)
         if inst['space']==11:
-            temp_context=simulator_instance.g_mem
+            temp_context=simulator_config.gmem
             exe_lat= temp_context.cycle(data)
         elif inst['space']==3:
-            temp_context=simulator_instance.s_mem[inst['core']]
-            exe_lat= temp_context.cycle(data)
-            
-            gpu_context=simulator_instance.block[inst['s_mem']][inst['sch_id']]
-            simulator_instance.cycle=gpu_context.cycle(data)
+            temp_context=simulator_config.smems[inst['core']]
+            exe_lat= temp_context.cycle(data) 
+        gpu_context.update(issue_lat, exe_lat)
     return gpu_context.clock
 
 def benchmark_caller(data, file_name, super_model):
