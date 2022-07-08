@@ -3,7 +3,7 @@ import numpy as np
 from sklearn import preprocessing
 import os,sys
 # import context_collector
-import read_features_1
+#import read_features_1
 
 if __name__ == '__main__':
     path= sys.argv[1]

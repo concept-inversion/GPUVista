@@ -1,116 +1,199 @@
 from enum import unique
-import sys,os
-from read_features_1 import read_data
+import sys
+import os,ipdb
+#from read_features_1 import read_data
 import numpy as np
 from common import *
-from context import context
-'''
-Input: trace from each kernel
-Output: Context instruction for each instruction
-'''     
+#from context import context
+import argparse
+import pandas as pd
+import json       
+from model import *
+
+class instruction():
+    clock=0
+    inst= None
+    truth= None
+    identifier=None
+    def __init__(self, inst=None):
+        #self.inst=inst
+        ipdb.set_trace()
+        self.truth= inst[['exe_lat', 'issue_lat']]
+        self.identifier= inst[['kid', 'core', 'sch_id', 'warp_id', 'uid', 'pc', 'reconvergence']]
+        self.inst= inst.drop(['exe_lat', 'issue_lat','kid', 'core', 'sch_id', 'warp_id', 'uid', 'pc', 'reconvergence'])
 
 
+class model_collection():
+    block_model= None
+    smem_model= None
+    gmem_model= None
+    def __init__(self):
+        self.block_model= CNN_block(BLOCK_INPUT_SIZE, 2)
+        self.smem_model= CNN_smem(SMEM_INPUT_SIZE, 1)
+        self.gmem_model= CNN_gmem(GMEM_INPUT_SIZE, 1)
+    
+    def load_model(self, path):
+        if(os.path.isdir(path)):
+            directory = os.listdir(path)
+            for f in directory:
+                if search('BLOCK' ,f):
+                    print("block model found!")
+                    bm = path + '/' + f
+                    self.block_model.load_state_dict(torch.load(bm))
+                elif search('SMEM',f):
+                    print("shared model found!")
+                    bm = path + '/' + f
+                    self.smem_model.load_state_dict(torch.load(sm))
+                elif search('GMEM',f):
+                    print("global model found!")
+                    gm = path + '/' + f
+                    self.gmem_model.load_state_dict(torch.load(gm))
+        else:
+            print("No trained models.")
 
-def event_creator(df):
-    event_lists=[]
-    for i in range((df.shape[0])):
-        kid= df.iloc[i]['kid']
-        uid= df.iloc[i]['uid']
-        fetch=df.iloc[i]['ibuff_time']
-        issue=df.iloc[i]['issued_time']
-        execute=df.iloc[i]['exe_time']
-        op=df.iloc[i]['instr']
-        event_lists.append({'kid':kid, 'uid':uid, 'clock':fetch, 'type':0, 'op':op })
-        event_lists.append({'kid':kid, 'uid':uid, 'clock':issue, 'type':1, 'op':op})
-        event_lists.append({'kid':kid, 'uid':uid, 'clock':execute, 'type':2, 'op':op})
-        # import ipdb; ipdb.set_trace()
-    return event_lists
-  
+class context_list():
+    context_list = []
+    head = 0
+    tail = 0
+    clock = 0
+    count = 0
+    size = None
+    model= None
+    inst= None
+    def __init__(self, type=None):
+        if type == BLOCK:
+            self.model=model_collection.block_model
+        elif type == S_MEM:
+            self.model=model_collection.smem_model
+        else:
+            self.model=model_collection.gmem_model
 
-def context_counter(event_lists):
-    fetched= set()
-    issued= set()
-    ops= []
-    count= []
-    event_count=0
-    for i in range(len(event_lists)):
-        # ipdb.set_trace()
-        data= event_lists[i]
-        if data['type']==0:
-            fetched.add(data['uid'])
-        elif data['type']==1:
-            fetched.remove(data['uid'])
-            issued.add(data['uid'])
-            ops.append(data['op'])
-        elif data['type']==2:
-            issued.remove(data['uid'])
-            ops.remove(data['op'])
-        count.append(len(fetched) + len(issued))
-        # print("%s,%d,%d,%d,%d"%(data['op'],event_count,len(set(ops)), len(fetched), len(issued)))
-        print("%s,%d,%d,%d,%d"%(ops,event_count,len(set(ops)), len(fetched), len(issued)))
-        # print("%s,%d,%d,%d,%d"%(list(instr_map.keys())[list(instr_map.values()).index(data['op'])],event_count,len(set(ops)), len(fetched), len(issued)))
-        event_count+=1
-    return count
+    def add(self, data):
+        ipdb.set_trace()
+        self.inst= data
+        context_list.append(data)
+        count += 1
+        tail += 1
+        return None
 
+    def retire(self):
+        for inst in self.context_list:
+            if inst.clock > self.clock:
+                self.context_list.remove(inst)
+        return None
 
-def benchmark_caller(df, dump_file):
-    df= data.groupby(by=['kid'])
-    kernels= [df.get_group(x) for x in df.groups]
-    bench_max=[]
-    i=0
+    def cycle(self, inst):
+        self.retire() 
+        self.add(inst)
+
+    def generate_input():
+        input_data=[]
+        for inst in range(context_list):
+            input_data.append(inst.inst)
+        return input_data 
+
+    def simulate():
+        input_data= self.generate_input()
+        if TRUTH:
+                    
+        else:
+            print("predict the latency")
+
+class simulator_config():
+    sm_count= 0
+    block_count= 0
+    block_models= None
+    gmem_model= None
+    smem_models= None
+    models= None
+    cycle=0
+    def __init__(self,super_model):
+        self.models= super_model
+
+    def counter(self,df):
+        self.sm_count=df['core'].nunique()
+        block_unique=df['sch_id'].nunique()
+        self.block_count= block_unique * self.sm_count
+
+    def context_init(self):
+        self.block_models = [[models.block_model for j in range(self.block_count)] for i in range(self.sm_count)]
+        self.smem_models= [models.smem_model for i in range(self.sm_count)]
+        self.gmem_models= models.gmem_model
+        #self.blocks[i][j].append(context_list(S_MEM))
+        
+
+def context_collector(df, super_model): 
+    simulator_instance= simulator_config(super_model)
+    simulator_instance.counter(df)
+    simulator_instance.context_init()
+    instructions = df.shape[0]
+    #ipdb.set_trace()
+    df.sort_values(by=['issue_cycle'],inplace=True)
+    df['issue_lat']=df['issue_cycle'].diff()  
+    df['issue_lat'].fillna(0,inplace=True)
+    df['issue_lat']=df['issue_lat'].astype(int)
+    df['exe_lat']= df['wb_cycle']-df['issue_cycle']
+    df = df.drop(['fetch_cycle', 'wb_cycle', 'issue_cycle'],axis=1)
+    f= open('instr.json')
+    instr_map=json.load(f)
+    try:
+        values=df['instr'].map(instr_map).astype(int)
+    except:
+        all=[instr_map.get(instr,instr) for instr in df['instr'].values]
+        no_integers = [x for x in all if not isinstance(x, int)]
+        missing= list(set(no_integers))
+        print("missing:", missing)
+        ipdb.set_trace()
+    df['instr']=values
+    f.close()
+    #ipdb.set_trace()
+    for i in range(instructions):
+        inst = df.iloc[i].copy()
+        data=instruction(inst)
+        gpu_context=simulator_instance.block[inst['s_mem']][inst['sch_id']]
+        issue_lat=gpu_context.cycle(data)
+        if inst['space']==11:
+            temp_context=simulator_instance.g_mem
+            exe_lat= temp_context.cycle(data)
+        elif inst['space']==3:
+            temp_context=simulator_instance.s_mem[inst['core']]
+            exe_lat= temp_context.cycle(data)
+            
+            gpu_context=simulator_instance.block[inst['s_mem']][inst['sch_id']]
+            simulator_instance.cycle=gpu_context.cycle(data)
+    return gpu_context.clock
+
+def benchmark_caller(data, file_name, super_model):
+    df = data.groupby(by=['kid'])
+    kernels = [df.get_group(x) for x in df.groups]
+    print(file_name, len(kernels))
+    bench_max = []
+    i = 0
     for frame in kernels:
-        event_lists= event_creator(frame)
-        sorted_list= (sorted(event_lists, key = lambda i: i['clock']))
-        # count=context_counter(sorted_list)
-        context_collector(frame, sorted_list, CONTEXT_LENGTH, dump_file)
-        break
-        bench_max.append(max(count))
-        print("kernel id: %d, Max count: %d" % (i,(max(count))))
-        i+=1
-        break
+        clock = context_collector(frame, super_model)
+        print("kernel id: %d, Cycle: %d" % (i, clock))
+        i += 1
     return bench_max
 
-
-def context_collector(df, event_lists, context_length, dump_file):
-    instructions= df.shape[0]
-    dump_instructions=[]
-    clock=0
-    gpu_context= context(context_length)
-    for i in range(instructions):
-        inst= df.iloc[i]
-        inst=inst.drop(['exe_time', 'ibuff_time', 'issued_time'])
-        gpu_context.retire()
-        gpu_context.add(inst)
-        gpu_context.get_clock()
-        gpu_context.set_retire_list(inst)
-        gpu_context.dump_inst(inst, dump_file)
-
-    print("Simulation over in cycles: ", gpu_context.clock)
-
-
 if __name__ == '__main__':
-    " Input processed data from read_features_1.py"
-    max_count=[]
-    path= sys.argv[1]
+    if len(sys.argv)!=3:
+        print("simulator.py <kernels trace directory> <models directory>")
+        sys.exit()
+    path = sys.argv[1]
+    model_path = sys.argv[2]
+    super_model= model_collection()
+    try:
+        super_model.load_model(model_path)
+    except:
+        print("Model not loaded!")
+        sys.exit()
     if(os.path.isdir(path)):
-        file_name= path.split('/')[-2] + ".bin"
-        try:
-            dump_file= open("training_data/"+file_name, "wb")
-        except:
-            print("Error: dump file not found")
-        for file in os.listdir(path):
-            print("bechmark: ", file)
-            if file.endswith(".log"):
-                data= read_data(path+'/'+file)
-                max_count.append(benchmark_caller(data, dump_file))
+        directory = os.listdir(path)
+        for f in directory:
+            df = pd.read_csv(path+'/'+f, names=col_name, error_bad_lines=False, header=None, )
+            df = df.dropna()
+            benchmark_caller(df, f, super_model)
     else:
-        file_name= path.split('/')[-2] + ".bin"
-        try:
-            dump_file= open("training_data/"+file_name, "wb")
-        except:
-            print("Error: dump file not found")
-        # import ipdb; ipdb.set_trace()
-        data= read_data(path)
-        max_count.append(benchmark_caller(data, dump_file))
-    dump_file.close()
-    # import ipdb; ipdb.set_trace()
+        df = pd.read_csv(path, names=col_name, error_bad_lines=False, header=None, )
+        df = df.dropna()
+        benchmark_caller(df, path, super_model)
