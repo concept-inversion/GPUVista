@@ -4,10 +4,11 @@ CONTEXT_LENGTH= 20
 OUT_LATENCY= 3
 BUFFER_LENGTH= 2
 
+TRAIN=1
 BLOCK=0
 SMEM=1
 GMEM=2
-DUMP=0
+DUMP=1
 TRUTH=1
 PREDICTION=1
 
@@ -49,10 +50,6 @@ GMEM_FEATURE= len(gmem_features)
 BLOCK_INPUT_SIZE= BLOCK_FEATURE*BLOCK_CONTEXT 
 SMEM_INPUT_SIZE= SMEM_FEATURE*SMEM_CONTEXT
 GMEM_INPUT_SIZE= GMEM_FEATURE*GMEM_CONTEXT
-
-def mapper(j_file, opcode):
-    op_int= int(j_file.get(opcode))
-    return op_int
 
 
 #all=[instr_map.get(instr,instr) for instr in frames['inst'].values]
