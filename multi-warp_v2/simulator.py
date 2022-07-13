@@ -59,27 +59,28 @@ def context_collector(df, super_model, ib=None):
     simulator_config.counter(df)
     simulator_config.context_init()
     instructions = df.shape[0]
-    #ipdb.set_trace()
-        #ipdb.set_trace()
+    if not ib:
+        print("ib none in context collector.")
     count=0
     for i in range(instructions):
         count=count+1
-        #if count==10:
-        #    break
+        if count==1000:
+            sys.exit(0)
+            #ipdb.set_trace()
         inst = df.iloc[i].copy()
         data=instruction(inst)
         issue_lat=0
         exe_lat=0
         gpu_context=simulator_config.blocks[inst['core']][inst['sch_id']]
-        issue_lat,exe_lat=gpu_context.cycle(data, ib=None)
+        issue_lat,exe_lat=gpu_context.cycle(data, ib)
         print(i,issue_lat,exe_lat, end=", ")
         if inst['space']==11:
             temp_context=simulator_config.gmem
-            exe_lat= temp_context.cycle(data, issue_lat,ib=None)
+            exe_lat= temp_context.cycle(data, issue_lat,ib)
             print("global mem: ",exe_lat, end=",")
         elif inst['space']==3:
             temp_context=simulator_config.smems[inst['core']]
-            exe_lat= temp_context.cycle(data, issue_lat, ib=None) 
+            exe_lat= temp_context.cycle(data, issue_lat, ib) 
             print("smem: ",exe_lat,end=",")
         gpu_context.update_lat(issue_lat, exe_lat)
         print("issue: %d, exe: %d, core: %d clock:%d"%(issue_lat, exe_lat,inst['core'],gpu_context.clock))
@@ -92,7 +93,7 @@ def benchmark_caller(data, file_name, super_model, ib= None):
     bench_max = []
     i = 0
     for frame in kernels:
-        clock = context_collector(frame, super_model, ib=None)
+        clock = context_collector(frame, super_model, ib)
         print("kernel id: %d, Cycle: %d" % (i, clock))
         i += 1
     return bench_max
@@ -109,7 +110,10 @@ if __name__ == '__main__':
     model_collection= None
     if DUMP:
         input_buffer= InputBufferCollec()
-    if not TRAIN:    
+        print("Dump detected!!")
+        #ipdb.set_trace()
+    if not TRAIN:
+        print("Loading model!!")
         try:
             super_model.load_model(model_path)
         except:

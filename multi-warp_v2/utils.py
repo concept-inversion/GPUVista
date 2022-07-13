@@ -1,6 +1,6 @@
 import os,sys
 import argparse, gzip
-import json
+import json, ipdb
 import numpy as np
 from common import *
 from model import *
@@ -22,8 +22,8 @@ class instruction():
 
 def load_file(model_name):
     try:
-        inp_dump_file= open("train_data/"+model_name+"inp.bin", "wb")
-        out_dump_file= open("train_data/"+model_name+"out.bin", "wb")
+        inp_dump_file= open("train_data/"+model_name+"_inp.bin", "wb")
+        out_dump_file= open("train_data/"+model_name+"_out.bin", "wb")
     except:
         print("Error loading dump file.")
         sys.exit(0)
@@ -35,7 +35,7 @@ def dump_inst(context):
     # print(shape, end=',')
     cat=np.pad(context, ((0,BLOCK_CONTEXT-shape),(0,0)),'constant', constant_values=0)
     #cat=np.append(cat, out).astype(np.int16)
-    cat=cat.flatten()
+    cat=cat.astype(np.int32).flatten()
     return cat
 
 
@@ -64,9 +64,10 @@ class InputBufferCollec():
     gmem= None
     smem= None
     def __init__(self):
-        block=  InputBuffer('block')
-        gmem=  InputBuffer('gmem')
-        smem=  InputBuffer('smem')
+        #ipdb.set_trace()
+        self.block=  InputBuffer('block')
+        self.gmem=  InputBuffer('gmem')
+        self.smem=  InputBuffer('smem')
 
 class ModelCollec():
     block_model= None
