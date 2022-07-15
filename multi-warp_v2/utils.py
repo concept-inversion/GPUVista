@@ -10,11 +10,17 @@ class instruction():
     inst= None 
     truth= None 
     identifiers=None 
-    uid=None 
+    uid=None
+    gmem_f=None
+    smem_f=None
+    #smem
     def __init__(self, inst=None): 
+        #ipdb.set_trace()
         self.truth= inst[['exe_lat', 'issue_lat']] 
         self.uid=inst['uid'] 
-        self.identifier= inst[['kid', 'core', 'sch_id', 'warp_id', 'uid', 'pc', 'reconvergence']] 
+        self.identifier= inst.loc[inst_id]
+        self.gmem_f= inst.loc[gmem_features]
+        self.smem_f= inst.loc[smem_features]
         self.inst= inst.drop(['exe_lat', 'issue_lat','kid', 'core', 'sch_id', 'warp_id', 'uid', 'pc', 'reconvergence']) 
         self.inst['exe_lat']=0 
         self.inst['issue_lat']=0 
@@ -30,10 +36,21 @@ def load_file(model_name):
     return inp_dump_file, out_dump_file
 
 
-def dump_inst(context):
+def dump_inst(context, model_type):
     shape= context.shape[0]
     # print(shape, end=',')
-    cat=np.pad(context, ((0,BLOCK_CONTEXT-shape),(0,0)),'constant', constant_values=0)
+    if model_type==BLOCK:
+        CONTEXT=BLOCK_CONTEXT
+        #cat=np.pad(context, ((0,CONTEXT-shape),(0,0)),'constant', constant_values=0)
+    elif model_type==SMEM:
+        CONTEXT=SMEM_CONTEXT
+        #cat=np.pad(context, ((0,CONTEXT-shape),(0,0)),'constant', constant_values=0)
+    else:
+        CONTEXT=GMEM_CONTEXT
+        #cat=np.pad(context, ((0,CONTEXT-shape),(0,0)),'constant', constant_values=0)
+    if CONTEXT-shape<0:
+        ipdb.set_trace()
+    cat=np.pad(context, ((0,CONTEXT-shape),(0,0)),'constant', constant_values=0)
     #cat=np.append(cat, out).astype(np.int16)
     cat=cat.astype(np.int32).flatten()
     return cat

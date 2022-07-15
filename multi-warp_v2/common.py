@@ -8,12 +8,12 @@ TRAIN=1
 BLOCK=0
 SMEM=1
 GMEM=2
-DUMP=1
+DUMP=0
 TRUTH=1
 PREDICTION=1
 
-BLOCK_CONTEXT= 22
-SMEM_CONTEXT= 10
+BLOCK_CONTEXT= 25
+SMEM_CONTEXT= 50
 GMEM_CONTEXT= 50
 #printf("%d,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%d,%d,%d,%u,%u,%d,%d,%d,%d,%#x,%d,%s,%llu,%u,%llu \n",1,m_kernel->get_uid(),m_sid,inst.get_schd_id(),inst.warp_id(),inst.get_uid(), inst.latency,inst.src_regs,inst.dst_regs,inst.is_load(),inst.is_store(), inst.data_size, inst.op, inst.sp_op, inst.op_pipe, inst.mem_op,inst.oprnd_type, inst.initiation_interval, inst.get_active_mask().count(), inst.isatomic(), inst.get_cache_status(), (int)inst.bar_type, (int)inst.red_type, (int)inst.bar_count, (int)inst.cache_op, inst.pc,inst.reconvergence_pc, inst.inst_name, inst.fetch_cycle + m_gpu->gpu_tot_sim_cycle, inst.get_issue_cycle(),m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
 

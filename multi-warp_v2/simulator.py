@@ -64,26 +64,28 @@ def context_collector(df, super_model, ib=None):
     count=0
     for i in range(instructions):
         count=count+1
-        if count==1000:
-            sys.exit(0)
-            #ipdb.set_trace()
+        if count==10:
+            print()#sys.exit(0)
         inst = df.iloc[i].copy()
+        print("\n***********\n Instruction:%d, uid:%d,  issue: %d, exe: %d "%(i, inst['uid'], inst['issue_lat'], inst['exe_lat']))
         data=instruction(inst)
         issue_lat=0
         exe_lat=0
         gpu_context=simulator_config.blocks[inst['core']][inst['sch_id']]
         issue_lat,exe_lat=gpu_context.cycle(data, ib)
-        print(i,issue_lat,exe_lat, end=", ")
+        #print(i,issue_lat,exe_lat, end=", ")
         if inst['space']==11:
             temp_context=simulator_config.gmem
             exe_lat= temp_context.cycle(data, issue_lat,ib)
-            print("global mem: ",exe_lat, end=",")
+            #print("global mem: ",exe_lat, end=",")
         elif inst['space']==3:
+            #ipdb.set_trace()
             temp_context=simulator_config.smems[inst['core']]
             exe_lat= temp_context.cycle(data, issue_lat, ib) 
-            print("smem: ",exe_lat,end=",")
+            #print("smem: ",exe_lat,end=",")
         gpu_context.update_lat(issue_lat, exe_lat)
-        print("issue: %d, exe: %d, core: %d clock:%d"%(issue_lat, exe_lat,inst['core'],gpu_context.clock))
+        
+        #print("issue: %d, exe: %d, core: %d clock:%d"%(issue_lat, exe_lat,inst['core'],gpu_context.clock))
     return gpu_context.clock
 
 def benchmark_caller(data, file_name, super_model, ib= None):
