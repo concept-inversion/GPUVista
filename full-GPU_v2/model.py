@@ -2,8 +2,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-
+from common import *
+import ipdb
 class FC(nn.Module):
     def __init__(self):
         super(FC, self).__init__()
@@ -21,16 +21,17 @@ class FC(nn.Module):
 class CNN_block(nn.Module):
     def __init__(self,input_size, out):
         super(CNN_block, self).__init__()
-        self.conv1 = nn.Conv1d(in_channels=input_size, out_channels=32, kernel_size=5)
+        self.conv1 = nn.Conv1d(in_channels=BLOCK_FEATURE, out_channels=32, kernel_size=5)
         self.conv2 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=5)
         self.conv3 = nn.Conv1d(in_channels=64, out_channels=32, kernel_size=5)
-        self.f1_input=32*input_size
+        self.f1_input=32*43
         self.fc1 = nn.Linear(self.f1_input, 256)
         self.fc2 = nn.Linear(256, 2)
     def forward(self, x):
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
+        #ipdb.set_trace()
         x=x.view(-1, self.f1_input)
         x=  F.relu(self.fc1(x))
         x = self.fc2(x)
@@ -49,6 +50,7 @@ class CNN_smem(nn.Module):
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
+        ipdb.set_trace()
         x=x.view(-1, self.f1_input)
         x=  F.relu(self.fc1(x))
         x = self.fc2(x)

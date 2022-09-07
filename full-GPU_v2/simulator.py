@@ -16,6 +16,7 @@ from utils import *
 class simulator_configurator():
     sm_count= 0
     block_count= 0
+    warps=0
     block_models= None
     gmem_model= None
     smem_models= None
@@ -25,9 +26,11 @@ class simulator_configurator():
         self.models= super_model
 
     def counter(self,df):
-        self.sm_count=df['core'].nunique()
-        block_unique=df['sch_id'].nunique()
+        self.sm_count= df['core'].nunique()
+        block_unique= df['sch_id'].nunique()
+        warps= df['warp_id'].nunique()
         self.block_count= block_unique * self.sm_count
+        print("sms: %d, blocks: %d, warps: %d"%(self.sm_count, self.block_count, self.warps))
 
     def context_init(self):
         self.blocks= [[block_simulator(self.models,i,j) for j in range(self.block_count)] for i in range(self.sm_count)]
@@ -35,24 +38,15 @@ class simulator_configurator():
         self.gmem= mem_simulator(self.models,0)
         #self.blocks[i][j].append(context_list(S_MEM))
 
-def trace_processor(df, instr_map):
-    df.sort_values(by=['issue_cycle'],inplace=True)
-    df['issue_lat']=df['issue_cycle'].diff()  
-    df['issue_lat'].fillna(0,inplace=True)
-    df['issue_lat']=df['issue_lat'].astype(int)
-    df['exe_lat']= df['wb_cycle']-df['issue_cycle']
-    df = df.drop(['fetch_cycle', 'wb_cycle', 'issue_cycle'],axis=1)
-    try:
-        values=df['instr'].map(instr_map).astype(int)
-    except:
-        all=[instr_map.get(instr,instr) for instr in df['instr'].values]
-        no_integers = [x for x in all if not isinstance(x, int)]
-        missing= list(set(no_integers))
-        print("missing:", missing)
-        ipdb.set_trace()
-    df['instr']=values
-    #f.close()
-    return df
+    def print_status(self):
+        print("Hardware status: ")
+        #ipdb.set_trace()
+        global BLOCK_MAX, SMEM_MAX, GMEM_MAX 
+        print("Block: %d, smem: %d, gmem: %d"%(BLOCK_MAX,SMEM_MAX,GMEM_MAX))
+        for i in range(self.sm_count):
+            for j in range(self.block_count):
+                print("SM id: %d, Block id: %d, Clock: %d" %(i,j,self.blocks[i][j].clock))
+        
 
 def context_collector(df, super_model, ib=None): 
     simulator_config= simulator_configurator(super_model)
@@ -62,30 +56,46 @@ def context_collector(df, super_model, ib=None):
     if not ib:
         print("ib none in context collector.")
     count=0
+    b_c=0 
+    s_c=0
+    g_c=0
     for i in range(instructions):
-        count=count+1
         if count==10:
-            print()#sys.exit(0)
+            break
+        count=count+1
         inst = df.iloc[i].copy()
-        print("\n***********\n Instruction:%d, uid:%d,  issue: %d, exe: %d "%(i, inst['uid'], inst['issue_lat'], inst['exe_lat']))
-        data=instruction(inst)
+        print("\n***********\n Instruction:%d, uid:%d,  issue: %d, exe: %d "%(i+1, inst['uid'], inst['issue_lat'], inst['exe_lat']))
         issue_lat=0
         exe_lat=0
+        #ipdb.set_trace()
         gpu_context=simulator_config.blocks[inst['core']][inst['sch_id']]
-        issue_lat,exe_lat=gpu_context.cycle(data, ib)
+        #ipdb.set_trace()
+        issue_lat,exe_lat=gpu_context.cycle(instruction(inst), ib)
         #print(i,issue_lat,exe_lat, end=", ")
+        #ipdb.set_trace()
+        gpu_context_clock= gpu_context.clock
+        b_c+=1
+        if count%30==0:
+            gpu_context.print_hardware()
+            #ipdb.set_trace()
+            print()#sys.exit(0)
+
         if inst['space']==11:
+            #ipdb.set_trace()
             temp_context=simulator_config.gmem
-            exe_lat= temp_context.cycle(data, issue_lat,ib)
+            exe_lat= temp_context.cycle(instruction(inst), gpu_context_clock,ib)
+            g_c+=1
             #print("global mem: ",exe_lat, end=",")
         elif inst['space']==3:
             #ipdb.set_trace()
             temp_context=simulator_config.smems[inst['core']]
-            exe_lat= temp_context.cycle(data, issue_lat, ib) 
+            exe_lat= temp_context.cycle(instruction(inst), gpu_context_clock, ib) 
+            s_c+=1
             #print("smem: ",exe_lat,end=",")
         gpu_context.update_lat(issue_lat, exe_lat)
-        
-        #print("issue: %d, exe: %d, core: %d clock:%d"%(issue_lat, exe_lat,inst['core'],gpu_context.clock))
+    #ipdb.set_trace()
+    print("b_c: %d, s_c: %d, g_c: %d"%(b_c,s_c,g_c))
+    gpu_context.print_hardware()
     return gpu_context.clock
 
 def benchmark_caller(data, file_name, super_model, ib= None):

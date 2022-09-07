@@ -21,10 +21,12 @@ class instruction():
         self.identifier= inst.loc[inst_id]
         self.gmem_f= inst.loc[gmem_features]
         self.smem_f= inst.loc[smem_features]
-        self.inst= inst.drop(['exe_lat', 'issue_lat','kid', 'core', 'sch_id', 'warp_id', 'uid', 'pc', 'reconvergence']) 
+        self.inst= inst.loc[block_features]
+        #self.inst= inst.drop(['exe_lat', 'issue_lat','kid', 'core', 'sch_id', 'warp_id', 'uid', 'pc', 'reconvergence']) 
         self.inst['exe_lat']=0 
         self.inst['issue_lat']=0 
-
+        self.gmem_f['exe_lat']=0
+        self.smem_f['exe_lat']=0
 
 def load_file(model_name):
     try:
@@ -39,6 +41,7 @@ def load_file(model_name):
 def dump_inst(context, model_type):
     shape= context.shape[0]
     # print(shape, end=',')
+    #ipdb.set_trace()
     if model_type==BLOCK:
         CONTEXT=BLOCK_CONTEXT
         #cat=np.pad(context, ((0,CONTEXT-shape),(0,0)),'constant', constant_values=0)
@@ -52,6 +55,7 @@ def dump_inst(context, model_type):
         ipdb.set_trace()
     cat=np.pad(context, ((0,CONTEXT-shape),(0,0)),'constant', constant_values=0)
     #cat=np.append(cat, out).astype(np.int16)
+    print(cat.shape)
     cat=cat.astype(np.int32).flatten()
     return cat
 
@@ -113,4 +117,28 @@ class ModelCollec():
                     self.gmem_model.load_state_dict(torch.load(gm))
         else:
             print("No trained models.")
+
+def trace_processor(df, instr_map):
+    df.sort_values(by=['issue_cycle'],inplace=True)
+    #ipdb.set_trace()
+    df=df.set_index('uid')
+    derived=df.groupby(['core','sch_id'],sort=False)['issue_cycle'].diff().to_frame()
+    derived=derived.rename(columns={"issue_cycle": "issue_lat"})
+    derived['issue_lat'].fillna(1,inplace=True)
+    df=df.join(derived.astype(int))
+    df=df.reset_index()
+    df['exe_lat']= df['wb_cycle']-df['issue_cycle']
+    df = df.drop(['fetch_cycle', 'wb_cycle', 'issue_cycle'],axis=1)
+    try:
+        values=df['instr'].map(instr_map).astype(int)
+    except:
+        all=[instr_map.get(instr,instr) for instr in df['instr'].values]
+        no_integers = [x for x in all if not isinstance(x, int)]
+        missing= list(set(no_integers))
+        print("missing:", missing)
+        ipdb.set_trace()
+    df['instr']=values
+    return df
+
+
 
